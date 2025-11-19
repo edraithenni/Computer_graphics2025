@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rasterization</title>
+<style>
+body { font-family: sans-serif; display: flex; gap: 20px; background-color: #1a1a1a; color: #ffffff; margin: 0; padding: 20px; border-radius: 0px; }
+#panel { display: flex; flex-direction: column; gap: 8px; width: 200px; background: #2d2d2d; padding: 15px; border-radius: 0px; border: 1px solid #444; }
+canvas { border: 2px solid #444; border-radius: 0px; background: #ffffff; }
+label { font-size: 14px; font-weight: 600; color: #fff; border-radius: 0px; }
+#debug { width:300px; height:500px; overflow:auto; border:2px solid #444; padding:12px; font-size:12px; background: #2d2d2d; border-radius: 0px; color: #fff; }
+select, input, button { border-radius: 0px; border: 1px solid #555; padding: 8px; background: #3d3d3d; color: #fff; font-size: 14px; }
+select:focus, input:focus { outline: none; border-color: #666; box-shadow: 0 0 0 2px rgba(100, 100, 100, 0.2); }
+button { background: #4a4a4a; border: 1px solid #666; color: #fff; font-weight: 600; cursor: pointer; transition: all 0.2s; border-radius: 0px; }
+button:hover { background: #5a5a5a; border-color: #777; }
+button:active { background: #3a3a3a; transform: scale(0.98); }
+#time { font-weight: 600; color: #4CAF50; font-size: 14px; margin-top: 10px; }
+#scaleControl { margin-top: 15px; display: flex; align-items: center; gap: 10px; color: #fff; }
+</style>
+</head>
+<body>
+
+<div id="panel">
+<label>Algorithm</label>
+<select id="algo">
+<option value="step">Step-by-Step</option>
+<option value="dda">DDA</option>
+<option value="bres">Bresenham Line</option>
+<option value="circle">Bresenham Circle</option>
+</select>
+
+<label>X0</label>
+<input id="x0" type="number" value="20">
+<label>Y0</label>
+<input id="y0" type="number" value="20">
+<label>X1</label>
+<input id="x1" type="number" value="200">
+<label>Y1</label>
+<input id="y1" type="number" value="140">
+<label>Radius</label>
+<input id="r" type="number" value="60">
+
+<button id="run">Draw</button>
+<button id="clear">Clear</button>
+<div id="time"></div>
+</div>
+
+<div style="display:flex; flex-direction:column; gap:10px;">
+    <canvas id="c" width="500" height="500"></canvas>
+    <div id="scaleControl">
+        <label for="scaleSlider">Scale:</label>
+        <input type="range" id="scaleSlider" min="5" max="50" value="10">
+        <span id="scaleValue">10</span>
+    </div>
+</div>
+
+<div id="debug"></div>
+
+<script>
+let scale = 10;
+let pixels = [];
+const scaleSlider = document.getElementById("scaleSlider");
+const scaleValue = document.getElementById("scaleValue");
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const origin = { x: c.width/2, y: c.height/2 };
+
+scaleSlider.oninput = () => {
+    scale = +scaleSlider.value;
+    scaleValue.innerText = scale;
+    draw_grid();
+    draw_pixels();
+};
+
+function draw_grid(){
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.strokeStyle="#ddd";
+    for(let x=origin.x%scale;x<c.width;x+=scale){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,c.height);ctx.stroke();}
+    for(let y=origin.y%scale;y<c.height;y+=scale){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(c.width,y);ctx.stroke();}
+    ctx.strokeStyle="#000";
+    ctx.beginPath();ctx.moveTo(0,origin.y);ctx.lineTo(c.width,origin.y);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(origin.x,0);ctx.lineTo(origin.x,c.height);ctx.stroke();
+
+    ctx.fillStyle="#000"; ctx.font="10px Arial"; ctx.textAlign="center"; ctx.textBaseline="top";
+    for(let i=0;i<=(c.width-origin.x)/scale;i++){ctx.fillText(i, origin.x+i*scale, origin.y+2);}
+    for(let i=-1;i>=-(origin.x/scale);i--){ctx.fillText(i, origin.x+i*scale, origin.y+2);}
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    for(let i=0;i<=(origin.y)/scale;i++){ctx.fillText(i, origin.x+2, origin.y-i*scale);}
+    for(let i=-1;i>=-((c.height-origin.y)/scale);i--){ctx.fillText(i, origin.x+2, origin.y-i*scale);}
+}
+
+function plot_pixel(x,y,color="#000"){
+    let cx = origin.x + x*scale;
+    let cy = origin.y - y*scale;
+    ctx.fillStyle=color;
+    ctx.fillRect(cx-scale/2,cy-scale/2,scale,scale);
+}
+
+function draw_pixels(){for(const [x,y,color] of pixels)plot_pixel(x,y,color);}
+
+function step_line(x0,y0,x1,y1){
+    let dx=x1-x0,dy=y1-y0,steps=Math.max(Math.abs(dx),Math.abs(dy)),sx=dx/steps,sy=dy/steps;
+    let pts=[],x=x0,y=y0;
+    for(let i=0;i<=steps;i++){pts.push([Math.round(x),Math.round(y),"#e63946"]);x+=sx;y+=sy;}
+    return pts;
+}
+
+function dda_line(x0,y0,x1,y1){
+    let dx=x1-x0,dy=y1-y0,steps=Math.max(Math.abs(dx),Math.abs(dy)),sx=dx/steps,sy=dy/steps;
+    let pts=[],x=x0,y=y0;
+    for(let i=0;i<=steps;i++){pts.push([Math.round(x),Math.round(y),"#2a9d8f"]);x+=sx;y+=sy;}
+    return pts;
+}
+
+function bresenham_line(x0,y0,x1,y1){
+    let dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx+dy;
+    let x=x0,y=y0,pts=[],step=0,debug_steps=[];
+    while(true){
+        pts.push([x,y,"#0077b6"]);
+        debug_steps.push(`step ${step}: (${x},${y}), err=${err}`);
+        if(x===x1 && y===y1) break;
+        let e2=2*err;
+        if(e2>=dy){err+=dy;x+=sx;}
+        if(e2<=dx){err+=dx;y+=sy;}
+        step++;
+    }
+    let dbg = document.getElementById("debug");
+    dbg.innerHTML = `<b>Calculations for Bresenham Line</b><br>`;
+    dbg.innerHTML += `Input points: (${x0},${y0}) -> (${x1},${y1})<br>`;
+    dbg.innerHTML += `dx=${dx}, dy=${dy}, sx=${sx}, sy=${sy}<br>`;
+    debug_steps.slice(0,5).forEach(s=>dbg.innerHTML+=s+"<br>");
+    if(debug_steps.length>5) dbg.innerHTML += `... and ${debug_steps.length-5} more steps<br>`;
+    dbg.innerHTML += `Total points: ${pts.length}`;
+    return pts;
+}
+
+function bresenham_circle(x0,y0,r){
+    let pts=[],x=0,y=r,d=3-2*r;
+    while(y>=x){
+        let c="#8338ec";
+        pts.push([x0+x,y0+y,c]); pts.push([x0-x,y0+y,c]); pts.push([x0+x,y0-y,c]); pts.push([x0-x,y0-y,c]);
+        pts.push([x0+y,y0+x,c]); pts.push([x0-y,y0+x,c]); pts.push([x0+y,y0-x,c]); pts.push([x0-y,y0-x,c]);
+        if(d<0) d+=4*x+6; else { d+=4*(x-y)+10; y--; } x++;
+    }
+    return pts;
+}
+
+document.getElementById("run").onclick=()=>{
+    pixels=[];
+    let algo=document.getElementById("algo").value;
+    let x0=+document.getElementById("x0").value;
+    let y0=+document.getElementById("y0").value;
+    let x1=+document.getElementById("x1").value;
+    let y1=+document.getElementById("y1").value;
+    let r=+document.getElementById("r").value;
+    let t0 = performance.now();
+    if(algo==="step") pixels=step_line(x0,y0,x1,y1);
+    else if(algo==="dda") pixels=dda_line(x0,y0,x1,y1);
+    else if(algo==="bres") pixels=bresenham_line(x0,y0,x1,y1);
+    else if(algo==="circle") pixels=bresenham_circle(x0,y0,r);
+    let t1 = performance.now();
+    
+    draw_grid();
+    draw_pixels();
+    document.getElementById("time").innerText=((t1-t0)*1000).toFixed(3)+" ms";
+};
+
+document.getElementById("clear").onclick=()=>{pixels=[];draw_grid();document.getElementById("time").innerText="";document.getElementById("debug").innerHTML="";};
+
+draw_grid();
+</script>
+</body>
+</html>
