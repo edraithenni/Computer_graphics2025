@@ -99,16 +99,38 @@ function plot_pixel(x,y,color="#000"){
 function draw_pixels(){for(const [x,y,color] of pixels)plot_pixel(x,y,color);}
 
 function step_line(x0,y0,x1,y1){
-    let dx=x1-x0,dy=y1-y0,steps=Math.max(Math.abs(dx),Math.abs(dy)),sx=dx/steps,sy=dy/steps;
-    let pts=[],x=x0,y=y0;
-    for(let i=0;i<=steps;i++){pts.push([Math.round(x),Math.round(y),"#e63946"]);x+=sx;y+=sy;}
+    let pts = [];
+    
+    let m = (y1 - y0) / (x1 - x0);
+    
+    for(let x = x0; x <= x1; x++) {
+        let y = y0 + m * (x - x0);
+        pts.push([x, Math.round(y), "#e63946"]);
+    }
+    
     return pts;
 }
 
+
 function dda_line(x0,y0,x1,y1){
-    let dx=x1-x0,dy=y1-y0,steps=Math.max(Math.abs(dx),Math.abs(dy)),sx=dx/steps,sy=dy/steps;
-    let pts=[],x=x0,y=y0;
-    for(let i=0;i<=steps;i++){pts.push([Math.round(x),Math.round(y),"#2a9d8f"]);x+=sx;y+=sy;}
+    let pts = [];
+    let dx = x1 - x0;
+    let dy = y1 - y0;
+    
+    let steps = Math.max(Math.abs(dx), Math.abs(dy));
+    
+    let xIncrement = dx / steps;
+    let yIncrement = dy / steps;
+    
+    let x = x0;
+    let y = y0;
+    
+    for(let i = 0; i <= steps; i++) {
+        pts.push([Math.round(x), Math.round(y), "#2a9d8f"]);
+        x += xIncrement;
+        y += yIncrement;
+    }
+    
     return pts;
 }
 
